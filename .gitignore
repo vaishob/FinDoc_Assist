@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.pythonlibs/
+.env
+data/
+.vercel/
+uvicorn.out.log
+uvicorn.err.log
+
+.vercel

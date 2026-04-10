@@ -1,0 +1,1 @@
+"""FinDoc Assist application package."""

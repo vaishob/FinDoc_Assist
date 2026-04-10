@@ -1,0 +1,8 @@
+.venv
+.pythonlibs
+__pycache__
+.pytest_cache
+data
+tests
+uvicorn.out.log
+uvicorn.err.log

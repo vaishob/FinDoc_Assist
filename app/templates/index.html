@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }}</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <main class="shell">
+        <div class="topbar">
+            <button
+                id="theme-toggle"
+                class="theme-toggle"
+                type="button"
+                aria-label="Toggle dark mode"
+                aria-pressed="false"
+                title="Toggle dark mode"
+            >
+                <span class="theme-icon theme-icon-sun" aria-hidden="true">&#9728;</span>
+                <span class="theme-icon theme-icon-moon" aria-hidden="true">&#9790;</span>
+            </button>
+        </div>
+        <section class="hero">
+            <div>
+                <p class="eyebrow">AI Document QA</p>
+                <h1>{{ app_name }}</h1>
+                <p class="subtitle">
+                    Upload PDF or text documents, ask grounded questions, and review source-backed answers with safety guardrails.
+                </p>
+            </div>
+            <div class="status-card">
+                <p class="status-label">Protection Layer</p>
+                <ul>
+                    <li>PII masking</li>
+                    <li>Out-of-scope detection</li>
+                    <li>Prompt-injection blocking</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="grid">
+            <div class="panel">
+                <h2>Upload Document</h2>
+                <form id="upload-form">
+                    <input id="file" name="file" type="file" accept=".pdf,.txt" required>
+                    <button type="submit">Upload</button>
+                </form>
+                <p id="upload-message" class="hint"></p>
+            </div>
+
+            <div class="panel">
+                <h2>Documents</h2>
+                <div id="documents-list" class="document-list">
+                    {% if documents %}
+                        {% for doc in documents %}
+                            <label class="document-card">
+                                <input type="checkbox" class="doc-checkbox" value="{{ doc.document_id }}">
+                                <span>
+                                    <strong>{{ doc.filename }}</strong>
+                                    <small>{{ doc.status }} &bull; {{ doc.chunk_count }} chunks{% if doc.pii_detected %} &bull; PII detected{% endif %}</small>
+                                </span>
+                            </label>
+                        {% endfor %}
+                    {% else %}
+                        <p class="hint">No documents uploaded yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <section class="panel query-panel">
+            <div class="query-head">
+                <div>
+                    <h2>Ask a Question</h2>
+                    <p class="hint">Leave all documents unchecked to search across the whole library.</p>
+                </div>
+            </div>
+            <form id="query-form">
+                <textarea id="question" rows="4" placeholder="What does the document say about refund eligibility?" required></textarea>
+                <button type="submit">Query</button>
+            </form>
+            <div id="guardrail-banner" class="guardrail-banner hidden"></div>
+            <article id="answer-card" class="answer-card hidden">
+                <h3>Answer</h3>
+                <p id="answer-text"></p>
+                <div id="latency" class="latency"></div>
+            </article>
+            <section id="sources" class="sources"></section>
+        </section>
+    </main>
+
+    <script>
+        const themeToggle = document.getElementById('theme-toggle');
+
+        function applyTheme(theme) {
+            document.documentElement.dataset.theme = theme;
+            themeToggle.setAttribute('aria-pressed', String(theme === 'dark'));
+            themeToggle.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+            themeToggle.setAttribute('title', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+        }
+
+        const storedTheme = localStorage.getItem('theme');
+        const preferredTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        applyTheme(storedTheme || preferredTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', nextTheme);
+            applyTheme(nextTheme);
+        });
+
+        async function refreshDocuments() {
+            const response = await fetch('/documents');
+            const payload = await response.json();
+            const container = document.getElementById('documents-list');
+            if (!payload.documents.length) {
+                container.innerHTML = '<p class="hint">No documents uploaded yet.</p>';
+                return;
+            }
+            container.innerHTML = payload.documents.map((doc) => `
+                <label class="document-card">
+                    <input type="checkbox" class="doc-checkbox" value="${doc.document_id}">
+                    <span>
+                        <strong>${doc.filename}</strong>
+                        <small>${doc.status} &bull; ${doc.chunk_count} chunks${doc.pii_detected ? ' &bull; PII detected' : ''}</small>
+                    </span>
+                </label>
+            `).join('');
+        }
+
+        document.getElementById('upload-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const fileInput = document.getElementById('file');
+            const message = document.getElementById('upload-message');
+            if (!fileInput.files.length) return;
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            message.textContent = 'Uploading and scheduling ingestion...';
+            const response = await fetch('/upload', { method: 'POST', body: formData });
+            const payload = await response.json();
+            if (!response.ok) {
+                message.textContent = payload.message || 'Upload failed.';
+                return;
+            }
+            message.textContent = `${payload.message} (${payload.document_id})`;
+            fileInput.value = '';
+            setTimeout(refreshDocuments, 800);
+        });
+
+        document.getElementById('query-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const question = document.getElementById('question').value.trim();
+            const selectedDocs = Array.from(document.querySelectorAll('.doc-checkbox:checked')).map((input) => input.value);
+            const response = await fetch('/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question,
+                    document_ids: selectedDocs.length ? selectedDocs : null,
+                    include_sources: true
+                })
+            });
+            const payload = await response.json();
+            const banner = document.getElementById('guardrail-banner');
+            const answerCard = document.getElementById('answer-card');
+            const answerText = document.getElementById('answer-text');
+            const latency = document.getElementById('latency');
+            const sources = document.getElementById('sources');
+
+            banner.classList.add('hidden');
+            answerCard.classList.add('hidden');
+            sources.innerHTML = '';
+
+            if (!response.ok) {
+                banner.textContent = payload.message || 'Query failed.';
+                banner.classList.remove('hidden');
+                return;
+            }
+
+            if (payload.guardrail_result.status !== 'allowed' && payload.guardrail_result.message) {
+                banner.textContent = payload.guardrail_result.message;
+                banner.classList.remove('hidden');
+            }
+
+            if (payload.answer) {
+                answerText.textContent = payload.answer;
+                latency.textContent = `Retrieval ${payload.retrieval_latency_ms} ms | Generation ${payload.generation_latency_ms} ms | Guardrail ${payload.guardrail_result.status}`;
+                answerCard.classList.remove('hidden');
+            }
+
+            if (payload.sources?.length) {
+                sources.innerHTML = '<h3>Sources</h3>' + payload.sources.map((source) => `
+                    <article class="source-card">
+                        <p class="source-meta">doc:${source.document_id} | page:${source.page_number ?? '?'} | score:${source.score}</p>
+                        <p>${source.text}</p>
+                    </article>
+                `).join('');
+            }
+        });
+    </script>
+</body>
+</html>
