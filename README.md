@@ -8,7 +8,7 @@ The project is intentionally designed to stay runnable in constrained environmen
 - If `sentence-transformers` is unavailable, it falls back to a local hashing embedder.
 - If `faiss` is unavailable, retrieval still works with NumPy cosine-style similarity over normalized vectors.
 
-This makes the app useful both as a demo/interview project and as a compact reference architecture for safe document QA.
+This makes the app useful both as a demo project and as a compact reference architecture for safe document QA.
 
 ## Table of Contents
 
@@ -471,26 +471,26 @@ Environment variables are loaded via `pydantic-settings` from `.env`.
 
 Example values are provided in [.env.example](./.env.example).
 
-| Variable | Purpose | Default |
-|---|---|---|
-| `APP_NAME` | UI and API application name | `FinDoc Assist` |
-| `APP_ENV` | Environment label | `development` |
-| `DATABASE_PATH` | SQLite database path | `data/findoc.db` locally, `/tmp/findoc-assist/findoc.db` on Vercel |
-| `UPLOAD_DIR` | Uploaded file storage path | `data/uploads` locally, `/tmp/findoc-assist/uploads` on Vercel |
-| `VECTOR_INDEX_PATH` | Base path for vector files | `data/vector_index` locally, `/tmp/findoc-assist/vector_index` on Vercel |
-| `MAX_UPLOAD_MB` | Max upload size in MB | `10` |
-| `EMBEDDING_DIMENSION` | Dense vector size | `384` |
-| `EMBEDDING_MODEL` | Sentence-transformer model name | `sentence-transformers/all-MiniLM-L6-v2` |
-| `LLM_PROVIDER` | `mock`, `none`, or non-mock provider selector | `mock` |
-| `LLM_BASE_URL` | OpenAI-compatible base URL | `https://api.groq.com/openai/v1` |
-| `LLM_API_KEY` | API key for upstream provider | empty |
-| `LLM_MODEL` | Upstream model name | `llama-3.1-8b-instant` |
-| `LLM_TIMEOUT_SECONDS` | HTTP timeout for model calls | `30` |
-| `TOP_K` | Initial candidate retrieval count | `10` |
-| `FINAL_CONTEXT_K` | Final number of context chunks passed to prompt builder | `5` |
-| `SIMILARITY_THRESHOLD` | Minimum support score to answer | `0.25` |
-| `PII_MODE` | `allow`, `mask`, or `block` | `mask` |
-| `SECRET_KEY` | Reserved secret/config value | `change-me` |
+| Variable               | Purpose                                                 | Default                                                                  |
+| ---------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `APP_NAME`             | UI and API application name                             | `FinDoc Assist`                                                          |
+| `APP_ENV`              | Environment label                                       | `development`                                                            |
+| `DATABASE_PATH`        | SQLite database path                                    | `data/findoc.db` locally, `/tmp/findoc-assist/findoc.db` on Vercel       |
+| `UPLOAD_DIR`           | Uploaded file storage path                              | `data/uploads` locally, `/tmp/findoc-assist/uploads` on Vercel           |
+| `VECTOR_INDEX_PATH`    | Base path for vector files                              | `data/vector_index` locally, `/tmp/findoc-assist/vector_index` on Vercel |
+| `MAX_UPLOAD_MB`        | Max upload size in MB                                   | `10`                                                                     |
+| `EMBEDDING_DIMENSION`  | Dense vector size                                       | `384`                                                                    |
+| `EMBEDDING_MODEL`      | Sentence-transformer model name                         | `sentence-transformers/all-MiniLM-L6-v2`                                 |
+| `LLM_PROVIDER`         | `mock`, `none`, or non-mock provider selector           | `mock`                                                                   |
+| `LLM_BASE_URL`         | OpenAI-compatible base URL                              | `https://api.groq.com/openai/v1`                                         |
+| `LLM_API_KEY`          | API key for upstream provider                           | empty                                                                    |
+| `LLM_MODEL`            | Upstream model name                                     | `llama-3.1-8b-instant`                                                   |
+| `LLM_TIMEOUT_SECONDS`  | HTTP timeout for model calls                            | `30`                                                                     |
+| `TOP_K`                | Initial candidate retrieval count                       | `10`                                                                     |
+| `FINAL_CONTEXT_K`      | Final number of context chunks passed to prompt builder | `5`                                                                      |
+| `SIMILARITY_THRESHOLD` | Minimum support score to answer                         | `0.25`                                                                   |
+| `PII_MODE`             | `allow`, `mask`, or `block`                             | `mask`                                                                   |
+| `SECRET_KEY`           | Reserved secret/config value                            | `change-me`                                                              |
 
 ## Data Storage Model
 
