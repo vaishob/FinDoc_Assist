@@ -1,6 +1,6 @@
 [project]
 name = "findoc-assist"
-version = "0.1.0"
+version = "0.1.1"
 description = "Production-grade RAG document QA system with web UI and safety guardrails."
 readme = "README.md"
 requires-python = ">=3.11"

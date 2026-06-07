@@ -51,14 +51,23 @@
 
             <div class="panel">
                 <h2>Documents</h2>
+                <p id="documents-status-hint" class="hint">Only processed documents can be selected for querying.</p>
                 <div id="documents-list" class="document-list">
                     {% if documents %}
                         {% for doc in documents %}
-                            <label class="document-card">
-                                <input type="checkbox" class="doc-checkbox" value="{{ doc.document_id }}">
-                                <span>
-                                    <strong>{{ doc.filename }}</strong>
-                                    <small>{{ doc.status }} &bull; {{ doc.chunk_count }} chunks{% if doc.pii_detected %} &bull; PII detected{% endif %}</small>
+                            <label class="document-card{% if doc.status != 'processed' %} document-card-disabled{% endif %}">
+                                <input type="checkbox" class="doc-checkbox" value="{{ doc.document_id }}" {% if doc.status != 'processed' %}disabled{% endif %}>
+                                <span class="document-copy">
+                                    <span class="document-title-row">
+                                        <strong>{{ doc.filename }}</strong>
+                                        <span class="status-pill status-{{ doc.status }}">{{ doc.status }}</span>
+                                    </span>
+                                    <small>{{ doc.chunk_count }} chunks{% if doc.pii_detected %} &bull; PII detected{% endif %}</small>
+                                    {% if doc.status == 'pending' or doc.status == 'processing' %}
+                                        <small class="document-note">Indexing in progress. This document will become selectable automatically.</small>
+                                    {% elif doc.status == 'failed' %}
+                                        <small class="document-note">Processing failed, so this document is temporarily unavailable for querying.</small>
+                                    {% endif %}
                                 </span>
                             </label>
                         {% endfor %}
@@ -92,6 +101,10 @@
 
     <script>
         const themeToggle = document.getElementById('theme-toggle');
+        const documentsHint = document.getElementById('documents-status-hint');
+        const documentsContainer = document.getElementById('documents-list');
+        const refreshIntervalMs = 1500;
+        let refreshTimer = null;
 
         function applyTheme(theme) {
             document.documentElement.dataset.theme = theme;
@@ -110,23 +123,76 @@
             applyTheme(nextTheme);
         });
 
+        function isDocumentSelectable(doc) {
+            return doc.status === 'processed';
+        }
+
+        function formatDocumentNote(doc) {
+            if (doc.status === 'pending' || doc.status === 'processing') {
+                return 'Indexing in progress. This document will become selectable automatically.';
+            }
+            if (doc.status === 'failed') {
+                return 'Processing failed, so this document is temporarily unavailable for querying.';
+            }
+            return '';
+        }
+
+        function renderDocumentCard(doc, selectedIds) {
+            const isSelectable = isDocumentSelectable(doc);
+            const isChecked = isSelectable && selectedIds.has(doc.document_id) ? 'checked' : '';
+            const note = formatDocumentNote(doc);
+            return `
+                <label class="document-card${isSelectable ? '' : ' document-card-disabled'}">
+                    <input type="checkbox" class="doc-checkbox" value="${doc.document_id}" ${isSelectable ? '' : 'disabled'} ${isChecked}>
+                    <span class="document-copy">
+                        <span class="document-title-row">
+                            <strong>${doc.filename}</strong>
+                            <span class="status-pill status-${doc.status}">${doc.status}</span>
+                        </span>
+                        <small>${doc.chunk_count} chunks${doc.pii_detected ? ' &bull; PII detected' : ''}</small>
+                        ${note ? `<small class="document-note">${note}</small>` : ''}
+                    </span>
+                </label>
+            `;
+        }
+
+        function stopRefreshLoop() {
+            if (refreshTimer !== null) {
+                window.clearTimeout(refreshTimer);
+                refreshTimer = null;
+            }
+        }
+
+        function scheduleRefreshLoop() {
+            if (refreshTimer !== null) return;
+            refreshTimer = window.setTimeout(async () => {
+                refreshTimer = null;
+                await refreshDocuments();
+            }, refreshIntervalMs);
+        }
+
         async function refreshDocuments() {
             const response = await fetch('/documents');
             const payload = await response.json();
-            const container = document.getElementById('documents-list');
+            const selectedIds = new Set(
+                Array.from(document.querySelectorAll('.doc-checkbox:checked')).map((input) => input.value)
+            );
             if (!payload.documents.length) {
-                container.innerHTML = '<p class="hint">No documents uploaded yet.</p>';
+                documentsContainer.innerHTML = '<p class="hint">No documents uploaded yet.</p>';
+                documentsHint.textContent = 'Only processed documents can be selected for querying.';
+                stopRefreshLoop();
                 return;
             }
-            container.innerHTML = payload.documents.map((doc) => `
-                <label class="document-card">
-                    <input type="checkbox" class="doc-checkbox" value="${doc.document_id}">
-                    <span>
-                        <strong>${doc.filename}</strong>
-                        <small>${doc.status} &bull; ${doc.chunk_count} chunks${doc.pii_detected ? ' &bull; PII detected' : ''}</small>
-                    </span>
-                </label>
-            `).join('');
+            documentsContainer.innerHTML = payload.documents.map((doc) => renderDocumentCard(doc, selectedIds)).join('');
+
+            const hasIndexingDocuments = payload.documents.some((doc) => doc.status === 'pending' || doc.status === 'processing');
+            if (hasIndexingDocuments) {
+                documentsHint.textContent = 'Indexing in progress. The document list refreshes automatically until new files are ready.';
+                scheduleRefreshLoop();
+            } else {
+                documentsHint.textContent = 'Only processed documents can be selected for querying.';
+                stopRefreshLoop();
+            }
         }
 
         document.getElementById('upload-form').addEventListener('submit', async (event) => {
@@ -145,7 +211,8 @@
             }
             message.textContent = `${payload.message} (${payload.document_id})`;
             fileInput.value = '';
-            setTimeout(refreshDocuments, 800);
+            stopRefreshLoop();
+            window.setTimeout(refreshDocuments, 500);
         });
 
         document.getElementById('query-form').addEventListener('submit', async (event) => {
@@ -198,6 +265,8 @@
                 `).join('');
             }
         });
+
+        refreshDocuments();
     </script>
 </body>
 </html>

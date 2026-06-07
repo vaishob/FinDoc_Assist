@@ -12,6 +12,7 @@ This makes the app useful both as a demo project and as a compact reference arch
 
 ## Table of Contents
 
+- [Versioning](#versioning)
 - [Core Capabilities](#core-capabilities)
 - [System Architecture](#system-architecture)
 - [Repository Layout](#repository-layout)
@@ -27,6 +28,15 @@ This makes the app useful both as a demo project and as a compact reference arch
 - [Deployment Notes](#deployment-notes)
 - [Current Limitations](#current-limitations)
 - [Future Improvements](#future-improvements)
+
+## Versioning
+
+Current documented iteration:
+
+- `v0.1.1` - Progressive document readiness UX
+  - Document cards now show status pills for `pending`, `processing`, `processed`, and `failed`.
+  - Only `processed` documents are selectable for querying, which avoids ambiguous "why didn't this new upload answer yet?" moments.
+  - The browser UI auto-refreshes the document list while ingestion is still running, so newly indexed files become query-ready without a manual page refresh.
 
 ## Core Capabilities
 
@@ -595,6 +605,8 @@ Features:
 
 - Upload form using `fetch` and `FormData`
 - Document refresh via `GET /documents`
+- Automatic document polling while ingestion is in progress
+- Query-ready status pills and disabled selection for non-processed documents
 - Query submission via `POST /query`
 - Dynamic answer and source rendering
 - Guardrail banner display for blocked or masked results

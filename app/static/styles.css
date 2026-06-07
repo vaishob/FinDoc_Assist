@@ -189,6 +189,62 @@ button {
     background: var(--panel-strong);
 }
 
+.document-card-disabled {
+    opacity: 0.7;
+}
+
+.document-copy {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.document-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: capitalize;
+    border: 1px solid transparent;
+}
+
+.status-processed {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.status-pending,
+.status-processing {
+    color: var(--accent-2);
+    background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+    border-color: color-mix(in srgb, var(--accent-2) 24%, transparent);
+}
+
+.status-failed {
+    color: #b54747;
+    background: rgba(181, 71, 71, 0.12);
+    border-color: rgba(181, 71, 71, 0.24);
+}
+
+.document-note {
+    display: block;
+}
+
+.document-card input[disabled] {
+    cursor: not-allowed;
+}
+
 .query-panel {
     padding: 22px;
 }
